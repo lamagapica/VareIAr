@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+  <meta name="theme-color" content="#141a20">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <title>VareiAR</title>
+
+  <link rel="stylesheet" href="styles.css">
+
+  <!--
+    LIBRERÍAS (versiones recomendadas para AR.js basado en localización):
+    A-Frame 1.3.0 + AR.js 3.4.5 (aframe-ar.js incluye gps-camera y gps-entity-place).
+    Si quieres funcionar sin conexión, descarga ambos ficheros y cambia las rutas.
+  -->
+  <script src="https://aframe.io/releases/1.3.0/aframe.min.js"></script>
+  <script src="https://raw.githack.com/AR-js-org/AR.js/3.4.5/aframe/build/aframe-ar.js"></script>
+
+  <!-- La lógica (modelos, coordenadas, permisos, slider…) está en app.js -->
+  <script src="app.js" defer></script>
+</head>
+
+<body>
+  <!-- Aquí app.js inserta la escena A-Frame cuando el usuario pulsa "Iniciar" -->
+  <div id="ar-root"></div>
+
+  <!-- ===================== INTERFAZ FLOTANTE ===================== -->
+  <div id="ui">
+
+    <!-- Cabecera: título + estado del GPS -->
+    <header id="hud-header" class="panel hidden">
+      <h1 class="brand">VareiAR</h1>
+      <div id="gps-status" class="status" data-state="searching" role="status" aria-live="polite">
+        <span class="dot" aria-hidden="true"></span>
+        <span id="gps-status-text">Buscando señal GPS…</span>
+      </div>
+    </header>
+
+    <!-- Indicador de carga de modelos -->
+    <div id="loading-chip" class="chip hidden" role="status">Cargando modelos 3D…</div>
+
+    <!-- Avisos breves -->
+    <div id="toast" class="toast hidden" role="status" aria-live="polite"></div>
+
+    <!-- Controles inferiores -->
+    <footer id="hud-footer" class="hidden">
+      <button id="recalibrate-btn" class="fab" type="button" aria-label="Recalibrar brújula">
+        <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <circle cx="12" cy="12" r="8.5"/>
+          <path d="M12 3.5v2.5M12 18v2.5M3.5 12H6M18 12h2.5"/>
+          <path d="M14.8 9.2l-1.6 4-4 1.6 1.6-4z"/>
+        </svg>
+        <span>Recalibrar</span>
+      </button>
+
+      <section class="panel slider-panel">
+        <label for="opacity-slider" class="slider-title">Transparencia de la reconstrucción</label>
+        <input id="opacity-slider" type="range" min="0" max="100" step="1" value="100" aria-describedby="opacity-value">
+        <div class="slider-scale" aria-hidden="true">
+          <span>Presente</span>
+          <output id="opacity-value" for="opacity-slider">100%</output>
+          <span>Pasado</span>
+        </div>
+      </section>
+    </footer>
+  </div>
+
+  <!-- ===================== PANTALLA DE BIENVENIDA ===================== -->
+  <section id="welcome" class="overlay" role="dialog" aria-labelledby="welcome-title">
+    <div class="card">
+      <h2 id="welcome-title">VareiAR</h2>
+      <p class="lead">Mira el paisaje a través de la cámara y descubre cómo eran los edificios de la antigua Vareia.</p>
+      <ul class="steps">
+        <li>Permite el acceso a la <strong>cámara</strong>, la <strong>ubicación</strong> y los <strong>sensores de movimiento</strong>.</li>
+        <li>Camina hacia uno de los puntos del recorrido y apunta el móvil al edificio.</li>
+        <li>Con el deslizador compara la reconstrucción con lo que ves hoy.</li>
+      </ul>
+      <button id="start-btn" class="btn" type="button">Iniciar experiencia</button>
+      <p class="fine">Funciona mejor al aire libre y con el GPS activado. Se necesita conexión HTTPS.</p>
+    </div>
+  </section>
+
+  <!-- ===================== PANTALLA DE ERROR ===================== -->
+  <section id="error" class="overlay hidden" role="alertdialog" aria-labelledby="error-title" aria-describedby="error-text">
+    <div class="card card-error">
+      <h2 id="error-title">No se puede continuar</h2>
+      <p id="error-text" class="lead"></p>
+      <p id="error-hint" class="hint"></p>
+      <button id="retry-btn" class="btn" type="button">Reintentar</button>
+    </div>
+  </section>
+
+  <!--
+    ===================== PLANTILLA DE LA ESCENA AR =====================
+    app.js clona esta plantilla al pulsar "Iniciar" (así la cámara y los sensores
+    solo se activan tras un gesto del usuario, obligatorio en iOS) y añade
+    automáticamente los <a-asset-item> y las <a-entity> de cada modelo
+    a partir de la lista CONFIG.models de app.js.
+  -->
+  <template id="ar-scene-template">
+    <a-scene
+      id="ar-scene"
+      embedded
+      vr-mode-ui="enabled: false"
+      arjs="sourceType: webcam; videoTexture: true; debugUIEnabled: false;"
+      renderer="antialias: true; alpha: true">
+
+      <!-- Precarga de los .glb (timeout amplio para modelos pesados en 4G) -->
+      <a-assets id="ar-assets" timeout="120000"></a-assets>
+
+      <!-- Luces para que los materiales de los .glb se vean bien -->
+      <a-entity light="type: ambient; color: #ffffff; intensity: 1.1"></a-entity>
+      <a-entity light="type: directional; color: #ffffff; intensity: 0.9" position="1 4 2"></a-entity>
+
+      <!-- Cámara con GPS + brújula. app.js le asigna gps-camera con los parámetros de CONFIG.gps -->
+      <a-camera id="ar-camera" rotation-reader></a-camera>
+    </a-scene>
+  </template>
+</body>
+</html>
