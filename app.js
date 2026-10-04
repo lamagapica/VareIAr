@@ -54,8 +54,8 @@
         id: 'ceramica',
         name: 'Cerámica',
         src: 'Ceramica.glb',
-        lat: 42.335012,
-        lon: -2.32153,
+        lat: 42.335151,
+        lon: -2.32140,
         scale: [1, 1, 1],
         yOffset: -1.5,
         rotationY: 0
@@ -311,6 +311,11 @@
         state.loaded += 1;
         updateLoading();
         console.log('[VareiAR] Modelo cargado:', m.src);
+        const info = recenterModel(ent, m);
+        if (DEBUG && info) {
+          showToast(`${m.name}: ${info.size.x.toFixed(1)}×${info.size.y.toFixed(1)}×${info.size.z.toFixed(1)} m ` +
+                    `(desplazamiento original ${info.offset.x.toFixed(0)}, ${info.offset.z.toFixed(0)} m)`, 10000);
+        }
         fadeIn(ent);
       });
       ent.addEventListener('model-error', () => {
@@ -335,6 +340,29 @@
 
     el.root.appendChild(frag);
     state.sceneBuilt = true;
+  }
+
+  /* Centra el modelo en su punto GPS y apoya su base en el suelo.
+     Muchos .glb (fotogrametría, CAD) traen el origen muy lejos de la geometría,
+     y entonces el edificio aparece a cientos de metros del punto marcado. */
+  function recenterModel(ent, m) {
+    if (m.autoCenter === false) return null;
+    const mesh = ent.getObject3D('mesh');
+    if (!mesh) return null;
+    const THREE = AFRAME.THREE;
+    ent.object3D.updateMatrixWorld(true);
+    const box = new THREE.Box3().setFromObject(mesh);
+    if (box.isEmpty()) return null;
+    const centerW = box.getCenter(new THREE.Vector3());
+    const baseW = new THREE.Vector3(centerW.x, box.min.y, centerW.z);
+    const centerL = ent.object3D.worldToLocal(centerW.clone());
+    const baseL = ent.object3D.worldToLocal(baseW.clone());
+    mesh.position.x -= centerL.x;
+    mesh.position.z -= centerL.z;
+    mesh.position.y -= baseL.y;
+    const size = box.getSize(new THREE.Vector3());
+    console.log('[VareiAR]', m.id, 'tamaño (m):', size.toArray(), 'desplazamiento:', centerL.toArray());
+    return { size, offset: centerL };
   }
 
   function updateLoading() {
