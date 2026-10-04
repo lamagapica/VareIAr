@@ -78,6 +78,7 @@
      Ej.: https://tu-web/index.html?lat=42.4625&lon=-2.4075
      ======================================================== */
   const params = new URLSearchParams(window.location.search);
+  const DEBUG = params.has('debug');
   const SIM = (params.has('lat') && params.has('lon'))
     ? { lat: parseFloat(params.get('lat')), lon: parseFloat(params.get('lon')) }
     : null;
@@ -278,35 +279,42 @@
     updateLoading();
 
     CONFIG.models.forEach((m) => {
-      // --- Precarga del .glb ---
-      const item = document.createElement('a-asset-item');
-      item.id = `model-${m.id}`;
-      item.setAttribute('src', m.src);
-      item.setAttribute('response-type', 'arraybuffer');
-      item.addEventListener('loaded', () => { state.loaded += 1; updateLoading(); });
-      item.addEventListener('error', () => {
-        state.loaded += 1;
-        updateLoading();
-        showToast(`No se pudo cargar ${m.src}. Revisa la ruta del archivo.`, 8000);
-        console.error('[VareiAR] Error cargando', m.src);
-      });
-      assets.appendChild(item);
-
-      // --- Entidad anclada a coordenadas GPS ---
+      // Se carga el .glb directamente desde la entidad (sin <a-assets>).
+      // Así la escena y la cámara arrancan al instante y cada modelo aparece
+      // cuando termina de descargarse. Con <a-assets>, un solo .glb que falle
+      // o pese mucho bloquea la escena (pantalla negra) hasta 30 s.
       const ent = document.createElement('a-entity');
       ent.id = `entity-${m.id}`;
-      ent.setAttribute('gltf-model', `#model-${m.id}`);
+      ent.setAttribute('gltf-model', `url(${m.src})`);
       ent.setAttribute('gps-entity-place', `latitude: ${m.lat}; longitude: ${m.lon};`);
       ent.setAttribute('scale', m.scale.join(' '));
       ent.setAttribute('position', `0 ${m.yOffset} 0`);   // gps-entity-place solo gestiona X y Z
       ent.setAttribute('rotation', `0 ${m.rotationY} 0`);
 
-      // Cuando el modelo está listo: aplicar opacidad actual con un fundido de entrada
-      ent.addEventListener('model-loaded', () => fadeIn(ent));
+      ent.addEventListener('model-loaded', () => {
+        state.loaded += 1;
+        updateLoading();
+        console.log('[VareiAR] Modelo cargado:', m.src);
+        fadeIn(ent);
+      });
       ent.addEventListener('model-error', () => {
-        showToast(`El archivo ${m.src} no es un .glb válido.`, 8000);
+        state.loaded += 1;
+        updateLoading();
+        showToast(`No se pudo cargar ${m.src}. Revisa la ruta y las mayúsculas.`, 8000);
+        console.error('[VareiAR] Error cargando', m.src);
       });
       scene.appendChild(ent);
+
+      // Modo depuración (?debug=1): cubo rojo de 2 m en cada coordenada, para
+      // comprobar que el anclaje GPS funciona aunque el .glb falle.
+      if (DEBUG) {
+        const box = document.createElement('a-box');
+        box.setAttribute('gps-entity-place', `latitude: ${m.lat}; longitude: ${m.lon};`);
+        box.setAttribute('scale', '2 2 2');
+        box.setAttribute('position', '0 0 0');
+        box.setAttribute('material', 'color: red; opacity: 0.7');
+        scene.appendChild(box);
+      }
     });
 
     el.root.appendChild(frag);
