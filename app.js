@@ -113,7 +113,8 @@
     sceneBuilt: false,
     loaded: 0,
     toastTimer: null,
-    stream: null
+    stream: null,
+    pos: null
   };
 
   /* ========================================================
@@ -469,6 +470,7 @@
   }
 
   function onPosition(lat, lon, accuracy) {
+    state.pos = { lat, lon, acc: accuracy };
     if (typeof accuracy === 'number' && accuracy > CONFIG.gps.minAccuracy) {
       setStatus('weak', `Señal GPS débil (±${Math.round(accuracy)} m)`);
       return;
@@ -534,6 +536,75 @@
   /* ========================================================
      7. ARRANQUE
      ======================================================== */
+  /* ========================================================
+     DEBUG HUD (?debug=1): diagnóstico en pantalla, sin consola
+     ======================================================== */
+  const dbg = { origin: false, updates: 0, err: '', box: null };
+
+  function bearingTo(lat1, lon1, lat2, lon2) {
+    const rad = (d) => (d * Math.PI) / 180;
+    const y = Math.sin(rad(lon2 - lon1)) * Math.cos(rad(lat2));
+    const x = Math.cos(rad(lat1)) * Math.sin(rad(lat2)) -
+              Math.sin(rad(lat1)) * Math.cos(rad(lat2)) * Math.cos(rad(lon2 - lon1));
+    return (Math.atan2(y, x) * 180 / Math.PI + 360) % 360;
+  }
+
+  function startDebugHud() {
+    if (!DEBUG || dbg.box) return;
+    const box = document.createElement('pre');
+    box.style.cssText = 'position:fixed;left:6px;top:calc(env(safe-area-inset-top,0px) + 64px);z-index:99;' +
+      'margin:0;padding:6px 8px;max-width:94vw;font:11px/1.35 monospace;color:#9f9;' +
+      'background:rgba(0,0,0,.65);border-radius:6px;pointer-events:none;white-space:pre-wrap;';
+    document.body.appendChild(box);
+    dbg.box = box;
+
+    window.addEventListener('gps-camera-origin-coord-set', () => { dbg.origin = true; });
+    window.addEventListener('gps-camera-update-position', () => { dbg.updates += 1; });
+    window.addEventListener('error', (e) => { dbg.err = String(e.message || e); });
+    window.addEventListener('unhandledrejection', (e) => { dbg.err = String(e.reason || e); });
+
+    setInterval(() => {
+      const THREE = AFRAME.THREE;
+      const cam = $('ar-camera');
+      const lines = [];
+      let heading = null;
+      let camPos = new THREE.Vector3();
+      if (cam && cam.getObject3D('camera')) {
+        const d = new THREE.Vector3();
+        cam.getObject3D('camera').getWorldDirection(d);
+        heading = (Math.atan2(d.x, -d.z) * 180 / Math.PI + 360) % 360;
+        cam.object3D.getWorldPosition(camPos);
+      }
+      const p = state.pos;
+      lines.push(`GPS: ${p ? `${p.lat.toFixed(5)}, ${p.lon.toFixed(5)} ±${Math.round(p.acc || 0)} m` : 'sin posición'}`);
+      lines.push(`gps-camera: origen ${dbg.origin ? 'OK' : 'NO'} · updates ${dbg.updates}`);
+      lines.push(`Brújula (hacia donde miras): ${heading === null ? '—' : Math.round(heading) + '°'}`);
+      CONFIG.models.forEach((m) => {
+        const ent = $(`entity-${m.id}`);
+        let t = `${m.name}: `;
+        if (p) {
+          const dist = haversine(p.lat, p.lon, m.lat, m.lon);
+          const brg = bearingTo(p.lat, p.lon, m.lat, m.lon);
+          t += `${Math.round(dist)} m, rumbo ${Math.round(brg)}°`;
+          if (heading !== null) {
+            let rel = ((brg - heading + 540) % 360) - 180;
+            t += Math.abs(rel) < 15 ? ' → DE FRENTE'
+              : rel > 0 ? ` → gira ${Math.round(rel)}° a la derecha`
+              : ` → gira ${Math.round(-rel)}° a la izquierda`;
+          }
+        }
+        if (ent) {
+          const w = new THREE.Vector3();
+          ent.object3D.getWorldPosition(w);
+          t += `\n   AR: ${Math.round(w.distanceTo(camPos))} m, visible=${ent.object3D.visible}, modelo=${ent.getObject3D('mesh') ? 'sí' : 'no'}`;
+        }
+        lines.push(t);
+      });
+      if (dbg.err) lines.push('ERROR: ' + dbg.err);
+      box.textContent = lines.join('\n');
+    }, 500);
+  }
+
   async function onStart() {
     el.welcome.classList.add('hidden');
     el.error.classList.add('hidden');
@@ -550,6 +621,7 @@
     try {
       buildScene();
       startGpsWatch();
+      startDebugHud();
       el.header.classList.remove('hidden');
       el.footer.classList.remove('hidden');
       onSliderInput();
