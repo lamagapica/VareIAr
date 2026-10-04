@@ -112,7 +112,8 @@
     watchId: null,
     sceneBuilt: false,
     loaded: 0,
-    toastTimer: null
+    toastTimer: null,
+    stream: null
   };
 
   /* ========================================================
@@ -226,7 +227,8 @@
         video: { facingMode: { ideal: 'environment' } },
         audio: false
       });
-      stream.getTracks().forEach((t) => t.stop());
+      if (state.stream) state.stream.getTracks().forEach((t) => t.stop());
+      state.stream = stream;   // se reutiliza como fondo de la escena
     } catch (e) {
       if (e && (e.name === 'NotAllowedError' || e.name === 'SecurityError')) fail('camera-denied');
       if (e && (e.name === 'NotFoundError' || e.name === 'OverconstrainedError')) fail('no-camera');
@@ -268,11 +270,25 @@
     // Limpia una escena anterior si existiera (p. ej. tras un error)
     el.root.innerHTML = '';
 
+    // Fondo de cámara propio: un <video> normal bajo el canvas transparente de A-Frame.
+    const video = document.createElement('video');
+    video.id = 'vareiar-cam';
+    video.setAttribute('autoplay', '');
+    video.setAttribute('muted', '');
+    video.setAttribute('playsinline', '');
+    video.muted = true;
+    video.playsInline = true;
+    video.srcObject = state.stream;
+    el.root.appendChild(video);
+    video.play().catch((e) => console.warn('[VareiAR] video.play()', e));
+
     const frag = document.importNode(el.template.content, true);
     const scene = frag.querySelector('a-scene');
     const assets = frag.querySelector('a-assets');
     const camera = frag.querySelector('#ar-camera');
 
+    // Sin videoTexture: la cámara la pintamos nosotros (arriba), AR.js solo hace el GPS.
+    scene.setAttribute('arjs', 'sourceType: webcam; videoTexture: false; debugUIEnabled: false;');
     camera.setAttribute('gps-camera', gpsCameraAttr());
 
     state.loaded = 0;
@@ -515,7 +531,23 @@
     }
   }
 
+  function injectStyles() {
+    const st = document.createElement('style');
+    st.textContent = `
+      html, body { background: #000; }
+      #ar-root { position: fixed; inset: 0; z-index: 0; background: transparent; overflow: hidden; }
+      #vareiar-cam { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; z-index: 0; background: #000; }
+      #ar-root a-scene, #ar-root .a-canvas, #ar-root canvas {
+        position: absolute !important; inset: 0 !important;
+        width: 100% !important; height: 100% !important;
+        background: transparent !important; z-index: 1;
+      }
+    `;
+    document.head.appendChild(st);
+  }
+
   document.addEventListener('DOMContentLoaded', () => {
+    injectStyles();
     el.slider.value = CONFIG.defaultOpacity;
     el.slider.style.setProperty('--val', `${CONFIG.defaultOpacity}%`);
     el.sliderValue.textContent = `${CONFIG.defaultOpacity}%`;
