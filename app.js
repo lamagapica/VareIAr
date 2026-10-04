@@ -114,7 +114,8 @@
     loaded: 0,
     toastTimer: null,
     stream: null,
-    pos: null
+    pos: null,
+    startPos: null   // primera posición GPS (para colocar el modelo de prueba junto al usuario)
   };
 
   /* ========================================================
@@ -240,7 +241,7 @@
     if (!SIM) {
       await new Promise((resolve, reject) => {
         navigator.geolocation.getCurrentPosition(
-          () => resolve(),
+          (p) => { state.startPos = { lat: p.coords.latitude, lon: p.coords.longitude }; resolve(); },
           (err) => {
             // Solo bloquea si el usuario deniega el permiso; un timeout se resuelve más tarde con el watch.
             if (err.code === 1) {
@@ -291,6 +292,7 @@
     // Sin videoTexture: la cámara la pintamos nosotros (arriba), AR.js solo hace el GPS.
     scene.setAttribute('arjs', 'sourceType: webcam; videoTexture: false; debugUIEnabled: false;');
     camera.setAttribute('gps-camera', gpsCameraAttr());
+    camera.setAttribute('camera', 'far: 100000');   // por defecto A-Frame no dibuja nada a más de 1000 m
 
     state.loaded = 0;
     updateLoading();
@@ -338,6 +340,31 @@
         scene.appendChild(box);
       }
     });
+
+    // ---- MODELO BÁSICO DE PRUEBA (borra este bloque cuando ya veas tus .glb) ----
+    // Cilindro naranja de 4 m, anclado por GPS a ~10 m al norte de donde abres la app.
+    // Si lo ves, el GPS/brújula/render funcionan y el fallo está en el .glb.
+    {
+      const base = SIM || state.startPos || { lat: CONFIG.models[0].lat, lon: CONFIG.models[0].lon };
+      const tLat = base.lat + 10 / 111320;   // 10 m al norte
+      const tLon = base.lon;
+      const t = document.createElement('a-entity');
+      t.id = 'entity-prueba';
+      t.setAttribute('geometry', 'primitive: cylinder; radius: 1; height: 4');
+      t.setAttribute('material', 'color: #ff6a00; shader: flat');
+      t.setAttribute('gps-entity-place', `latitude: ${tLat}; longitude: ${tLon};`);
+      t.setAttribute('position', '0 0.5 0');   // base apoyada en el suelo (móvil a ~1,5 m)
+      scene.appendChild(t);
+    }
+    // Solo con ?debug=1: cubo magenta fijo a 4 m delante de la cámara, SIN GPS.
+    // Si no lo ves, el problema es de render/cámara, no de ubicación.
+    if (DEBUG) {
+      const f = document.createElement('a-box');
+      f.setAttribute('position', '0 0 -4');
+      f.setAttribute('scale', '1 1 1');
+      f.setAttribute('material', 'color: magenta; shader: flat');
+      camera.appendChild(f);
+    }
 
     el.root.appendChild(frag);
     state.sceneBuilt = true;
