@@ -102,12 +102,13 @@
     <a-scene
       id="ar-scene"
       embedded
+      loading-screen="enabled: false"
       vr-mode-ui="enabled: false"
       arjs="sourceType: webcam; videoTexture: true; debugUIEnabled: false;"
       renderer="antialias: true; alpha: true">
 
-      <!-- Precarga de los .glb (timeout amplio para modelos pesados en 4G) -->
-      <a-assets id="ar-assets" timeout="120000"></a-assets>
+      <!-- Precarga de los .glb (timeout de 30 s; sube el valor si tus modelos pesan mucho) -->
+      <a-assets id="ar-assets" timeout="30000"></a-assets>
 
       <!-- Luces para que los materiales de los .glb se vean bien -->
       <a-entity light="type: ambient; color: #ffffff; intensity: 1.1"></a-entity>
