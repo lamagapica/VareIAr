@@ -43,7 +43,7 @@
       {
         id: 'almazara',
         name: 'Almazara',
-        src: '/assets/almazara.glb',
+        src: './assets/almazara.glb',
         lat: 42.462521,
         lon: -2.407462,
         scale: [1, 1, 1],
@@ -53,7 +53,7 @@
       {
         id: 'ceramica',
         name: 'Cerámica',
-        src: '/assets/ceramica.glb',
+        src: './assets/ceramica.glb',
         lat: 42.4615518,
         lon: -2.41001226,
         scale: [1, 1, 1],
@@ -63,7 +63,7 @@
       {
         id: 'termas',
         name: 'Termas',
-        src: '/assets/termas.glb',
+        src: './assets/termas.glb',
         lat: 42.4619531,
         lon: -2.4077693,
         scale: [1, 1, 1],
