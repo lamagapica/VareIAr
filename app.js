@@ -53,7 +53,7 @@
       {
         id: 'ceramica',
         name: 'Cerámica',
-        src: './assets/ceramica.glb',
+        src: 'ceramica.glb',
         lat: 42.4615518,
         lon: -2.41001226,
         scale: [1, 1, 1],
