@@ -54,8 +54,8 @@
         id: 'ceramica',
         name: 'Cerámica',
         src: 'Ceramica.glb',
-        lat: 42.335151,
-        lon: -2.32140,
+        lat: 42.335012,
+        lon: -2.32153,
         scale: [1, 1, 1],
         yOffset: -1.5,
         rotationY: 0
