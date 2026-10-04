@@ -53,7 +53,7 @@
       {
         id: 'ceramica',
         name: 'Cerámica',
-        src: 'ceramica.glb',
+        src: 'Ceramica.glb',
         lat: 42.4615518,
         lon: -2.41001226,
         scale: [1, 1, 1],
@@ -63,7 +63,7 @@
       {
         id: 'termas',
         name: 'Termas',
-        src: './assets/termas.glb',
+        src: 'Termas.glb',
         lat: 42.4619531,
         lon: -2.4077693,
         scale: [1, 1, 1],
